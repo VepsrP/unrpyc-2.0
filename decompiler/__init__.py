@@ -147,3 +147,53 @@ class Decompiler(DecompilerBase):
         for child in ast.children:
             lines[ast.loc[1]] = (indent, "contains:")
             self.print_atl(child, indent + 1)
+
+    # @dispatch(renpy.atl.RawChoice)
+    # def print_atl_rawchoice(self, ast, indent):
+    #     for chance, block in ast.choices:
+
+    #         self.indent()
+    #         self.write("choice")
+    #         if chance != "1.0":
+    #             self.write(" %s" % chance)
+    #         self.write(":")
+    #         self.print_atl(block)
+    #     if (self.index + 1 < len(self.block) and
+    #     	isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
+    #         self.indent()
+    #         self.write("pass")
+
+    # @dispatch(store.ATL.RawChoice)
+    # def print_atl_rawchoice(self, ast):
+    #     for loc, chance, block in ast.choices:
+    #         self.indent()
+    #         self.write("choice")
+    #         if chance != "1.0":
+    #             self.write(" %s" % chance)
+    #         self.write(":")
+    #         self.print_atl(block)
+    #     if (self.index + 1 < len(self.block) and
+    #     	isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
+    #         self.indent()
+    #         self.write("pass")
+
+    # @dispatch(renpy.atl.RawContainsExpr)
+    # def print_atl_rawcontainsexpr(self, ast, indent):
+    #     lines[]
+    #     self.write("contains %s" % ast.expression)
+
+    # @dispatch(renpy.atl.RawEvent)
+    # def print_atl_rawevent(self, ast):
+    #     self.indent()
+    #     self.write("event %s" % ast.name)
+
+    @dispatch(renpy.atl.RawFunction)
+    def print_atl_rawfunction(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "function %s" % ast.expr)
+
+    @dispatch(renpy.atl.RawOn)
+    def print_atl_rawon(self, ast, indent):
+        for name, block in sorted(ast.handlers.items(),
+                                  key=lambda i: i[1].loc[1]):
+            lines[ast.loc[1]] = (indent, "on %s:" % name)
+            self.print_atl(block, indent + 1)
