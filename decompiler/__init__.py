@@ -135,3 +135,15 @@ class Decompiler(DecompilerBase):
             # A trailing comma results in an empty RawMultipurpose being
             # generated on the same line as the last real one.
             lines[ast.loc[1]] = (indent, ",")
+
+    @dispatch(renpy.atl.RawBlock)
+    @dispatch(store.ATL.RawBlock)
+    def print_atl_rawblock(self, ast, indent):
+        lines[ast.loc[1]-1] = (indent, "block:")
+        self.print_atl(ast, indent + 1)
+
+    @dispatch(renpy.atl.RawChild)
+    def print_atl_rawchild(self, ast, indent):
+        for child in ast.children:
+            lines[ast.loc[1]] = (indent, "contains:")
+            self.print_atl(child, indent + 1)
