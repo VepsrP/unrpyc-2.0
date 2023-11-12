@@ -206,3 +206,14 @@ class Decompiler(DecompilerBase):
         if (self.index + 1 < len(self.block) and
             isinstance(self.block[self.index + 1], renpy.atl.RawParallel)):
             self.write("pass")
+
+    @dispatch(renpy.atl.RawRepeat)
+    @dispatch(store.ATL.RawRepeat)
+    def print_atl_rawrepeat(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "repeat")
+        if ast.repeats:
+            lines[ast.loc[1]][1] += " %s" % ast.repeats # not sure if this is even a string
+
+    @dispatch(renpy.atl.RawTime)
+    def print_atl_rawtime(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "time %s" % ast.time)
