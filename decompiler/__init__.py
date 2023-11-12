@@ -251,3 +251,29 @@ class Decompiler(DecompilerBase):
             self.print_atl(ast.atl, indent + 1)
 
     # Directing related functions
+
+    @dispatch(renpy.ast.Show)
+    def print_show(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "show ")
+        needs_space = self.print_imspec(ast.imspec)
+
+        if self.paired_with:
+            if needs_space:
+                lines[ast.loc[1]][1] += " "
+            lines[ast.loc[1]][1] += "with %s" % self.paired_with
+            self.paired_with = True
+
+        if hasattr(ast, "atl") and ast.atl is not None:
+            lines[ast.loc[1]][1] += ":"
+            self.print_atl(ast.atl, indent + 1)
+
+    @dispatch(renpy.ast.ShowLayer)
+    def print_showlayer(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "show layer %s" % ast.layer)
+
+        if ast.at_list:
+            lines[ast.loc[1]][1] += " at %s" % ', '.join(ast.at_list)
+
+        if hasattr(ast, "atl") and ast.atl is not None:
+            lines[ast.loc[1]][1] += ":"
+            self.print_atl(ast.atl, indent + 1)
