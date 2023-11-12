@@ -217,3 +217,37 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.atl.RawTime)
     def print_atl_rawtime(self, ast, indent):
         lines[ast.loc[1]] = (indent, "time %s" % ast.time)
+
+    def print_imspec(self, imspec):
+        return False
+    
+    @dispatch(renpy.ast.Image)
+    def print_image(self, ast, indent):
+        self.require_init()
+        lines[ast.loc[1]] = (indent, "image %s" % ' '.join(ast.imgname))
+        if ast.code is not None:
+            lines[ast.loc[1]][1] += " = %s" % ast.code.source
+        else:
+            if hasattr(ast, "atl") and ast.atl is not None:
+                lines[ast.loc[1]][1] += ":"
+                self.print_atl(ast.atl, indent + 1)
+
+    @dispatch(renpy.ast.Transform)
+    def print_transform(self, ast, indent):
+        self.require_init()
+
+        # If we have an implicit init block with a non-default priority, we need to store the priority here.
+        priority = ""
+        if isinstance(self.parent, renpy.ast.Init):
+            init = self.parent
+            if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
+                priority = " %d" % (init.priority - self.init_offset)
+        lines[ast.loc[1]] = (indent, "transform%s %s" % (priority, ast.varname))
+        if ast.parameters is not None:
+            lines[ast.loc[1]][1] += reconstruct_paraminfo(ast.parameters)
+
+        if hasattr(ast, "atl") and ast.atl is not None:
+            lines[ast.loc[1]][1] += ":"
+            self.print_atl(ast.atl, indent + 1)
+
+    # Directing related functions
