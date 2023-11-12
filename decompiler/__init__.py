@@ -195,5 +195,14 @@ class Decompiler(DecompilerBase):
     def print_atl_rawon(self, ast, indent):
         for name, block in sorted(ast.handlers.items(),
                                   key=lambda i: i[1].loc[1]):
-            lines[ast.loc[1]] = (indent, "on %s:" % name)
+            lines[block.loc[1] - 1] = (indent, "on %s:" % name)
             self.print_atl(block, indent + 1)
+
+    @dispatch(renpy.atl.RawParallel)
+    def print_atl_rawparallel(self, ast, indent):
+        for block in ast.blocks:
+            lines[block.loc[1] - 1] = (indent, "parallel:")
+            self.print_atl(block, indent + 1)
+        if (self.index + 1 < len(self.block) and
+            isinstance(self.block[self.index + 1], renpy.atl.RawParallel)):
+            self.write("pass")
