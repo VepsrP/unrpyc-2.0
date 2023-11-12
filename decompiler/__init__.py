@@ -277,3 +277,36 @@ class Decompiler(DecompilerBase):
         if hasattr(ast, "atl") and ast.atl is not None:
             lines[ast.loc[1]][1] += ":"
             self.print_atl(ast.atl, indent + 1)
+
+    @dispatch(renpy.ast.Scene)
+    def print_scene(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "scene")
+
+        if ast.imspec is None:
+            if (PY2 and isinstance(ast.layer, unicode) or (PY3 and isinstance(ast.layer, str))):
+                    lines[ast.loc[1]][1] += " onlayer %s" % ast.layer
+
+            needs_space = True
+        else:
+            lines[ast.loc[1]][1] += " "
+            needs_space = self.print_imspec(ast.imspec)
+
+        if self.paired_with:
+            if needs_space:
+                lines[ast.loc[1]][1] += " "
+            lines[ast.loc[1]][1] += "with %s" % self.paired_with
+            self.paired_with = True
+
+        if hasattr(ast, "atl") and ast.atl is not None:
+            lines[ast.loc[1]][1] += ":"
+            self.print_atl(ast.atl, indent + 1)
+
+    @dispatch(renpy.ast.Hide)
+    def print_hide(self, ast, indent):
+        lines[ast.loc[1]] = (indent, "hide ")
+        needs_space = self.print_imspec(ast.imspec)
+        if self.paired_with:
+            if needs_space:
+                lines[ast.loc[1]][1] += " "
+            lines[ast.loc[1]][1] += "with %s" % self.paired_with
+            self.paired_with = True
