@@ -310,3 +310,123 @@ class Decompiler(DecompilerBase):
                 lines[ast.loc[1]][1] += " "
             lines[ast.loc[1]][1] += "with %s" % self.paired_with
             self.paired_with = True
+
+    # @dispatch(renpy.ast.With)
+    # def print_with(self, ast, indent):
+    #     # the 'paired' attribute indicates that this with
+    #     # and with node afterwards are part of a postfix
+    #     # with statement. detect this and process it properly
+    #     if hasattr(ast, "paired") and ast.paired is not None:
+    #         self.block[self.index + 2] = convert_ast(self.block[self.index + 2])
+    #         # Sanity check. check if there's a matching with statement two nodes further
+    #         if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
+    #                self.block[self.index + 2].expr == ast.paired):
+    #             raise Exception("Unmatched paired with {0} != {1}".format(
+    #                             repr(self.paired_with), repr(ast.expr)))
+
+    #         self.paired_with = ast.paired
+
+    #     elif self.paired_with:
+    #         # Check if it was consumed by a show/scene statement
+    #         if self.paired_with is not True:
+    #             self.write(" with %s" % ast.expr)
+    #         self.paired_with = False
+    #     else:
+    #         self.advance_to_line(ast.linenumber)
+    #         self.indent()
+    #         self.write("with %s" % ast.expr)
+    #         self.paired_with = False
+
+    # @dispatch(renpy.ast.Label)
+    # def print_label(self, ast):
+    #     # If a Call block preceded us, it printed us as "from"
+    #     if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
+    #         return
+    #     remaining_blocks = len(self.block) - self.index
+    #     if remaining_blocks > 1:
+    #         next_ast = self.block[self.index + 1]
+    #         # See if we're the label for a menu, rather than a standalone label.
+    #         if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
+    #             hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
+    #             (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
+    #             isinstance(next_ast, renpy.ast.Say) and
+    #             self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
+    #             self.label_inside_menu = ast
+    #             return
+    #     self.advance_to_line(ast.linenumber)
+    #     self.indent()
+
+    #     # It's possible that we're an "init label", not a regular label. There's no way to know
+    #     # if we are until we parse our children, so temporarily redirect all of our output until
+    #     # that's done, so that we can squeeze in an "init " if we are.
+    #     out_file = self.out_file
+    #     self.out_file = StringIO()
+    #     missing_init = self.missing_init
+    #     self.missing_init = False
+    #     try:
+    #         self.write("label %s%s%s:" % (
+    #             ast.name,
+    #             reconstruct_paraminfo(ast.parameters) if hasattr(ast, 'parameters') else '',
+    #             " hide" if hasattr(ast, 'hide') and ast.hide else ""))
+    #         self.print_nodes(ast.block, 1)
+    #     finally:
+    #         if self.missing_init:
+    #             out_file.write("init ")
+    #         self.missing_init = missing_init
+    #         out_file.write(self.out_file.getvalue())
+    #         self.out_file = out_file
+
+    @dispatch(renpy.ast.Jump)
+    def print_jump(self, ast, indent):
+        lines[ast.linenumber] = (indent, "jump %s%s" % ("expression " if ast.expression else "", ast.target))
+
+    # @dispatch(renpy.ast.Call)
+    # def print_call(self, ast, indent):
+    #     words = WordConcatenator(False)
+    #     words.append("call")
+    #     if ast.expression:
+    #         words.append("expression")
+    #     words.append(ast.label)
+
+    #     if hasattr(ast, 'arguments') and ast.arguments is not None:
+    #         if ast.expression:
+    #             words.append("pass")
+    #         words.append(reconstruct_arginfo(ast.arguments))
+
+    #     # We don't have to check if there's enough elements here,
+    #     # since a Label or a Pass is always emitted after a Call.
+    #     next_block = convert_ast(self.block[self.index + 1])
+    #     if isinstance(next_block, renpy.ast.Label):
+    #         words.append("from %s" % next_block.name)
+
+    #     lines[ast.linenumber] = (indent, words.join())
+
+    # @dispatch(renpy.ast.Return)
+    # def print_return(self, ast, indent):
+    #     if ((not hasattr(ast, 'expression') or ast.expression is None) and self.parent is None and
+    #         self.index + 1 == len(self.block) and self.index and
+    #         ast.linenumber == self.block[self.index - 1].linenumber):
+    #         # As of Ren'Py commit 356c6e34, a return statement is added to
+    #         # the end of each rpyc file. Don't include this in the source.
+    #         return
+
+    #     lines[ast.linenumber] = (indent, "return")
+
+    #     if hasattr(ast, 'expression') and ast.expression is not None:
+    #         lines[ast.linenumber][1] += " %s" % ast.expression
+
+    @dispatch(renpy.ast.If)
+    def print_if(self, ast, indent):
+        statement = First("if %s:", "elif %s:")
+
+        for i, (condition, block) in enumerate(ast.entries):
+            # The non-Unicode string "True" is the condition for else:
+
+            if((i > 0) and (i + 1) == len(ast.entries) and ((PY2 and not isinstance(condition, unicode)) or (PY3 and not isinstance(condition, str)) or condition == u'True')):
+                lines[block[0].linenumber - 1] = (indent, "else:")
+            else:
+                if(hasattr(condition, 'linenumber')):
+                    lines[condition.linenumber] = (indent, statement() % condition)
+                else:
+                    lines[block[0].linenumber - 1] = (indent, statement() % condition)
+            self.print_nodes(block, indent + 1)
