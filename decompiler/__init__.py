@@ -726,3 +726,74 @@ class Decompiler(DecompilerBase):
                 self.lines[ast.newloc[1]] = (indent, 'new "%s"' % string_escape(ast.new))
             else:
                 self.lines[ast.linenumber + 1] = (indent, 'new "%s"' % string_escape(ast.new))
+
+    @dispatch(renpy.ast.TranslateBlock)
+    @dispatch(renpy.ast.TranslateEarlyBlock)
+    def print_translateblock(self, ast, indent):
+        self.indent()
+        self.lines[ast.loc[1]] = (indent, "translate %s " % (ast.language or "None"))
+
+        in_init = self.in_init
+        if len(ast.block) == 1 and isinstance(ast.block[0], (renpy.ast.Python, renpy.ast.Style)):
+            # Ren'Py counts the TranslateBlock from "translate python" and "translate style" as an Init.
+            self.in_init = True
+        try:
+            self.print_nodes(ast.block, indent + 1)
+        finally:
+            self.in_init = in_init
+
+    # @dispatch(renpy.ast.Screen)
+    # def print_screen(self, ast, indent):
+    #     self.require_init()
+    #     screen = ast.screen
+    #     if isinstance(screen, renpy.screenlang.ScreenLangScreen):
+    #         self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
+    #                                 self.linenumber,
+    #                                 self.decompile_python,
+    #                                 self.skip_indent_until_write,
+    #                                 self.printlock)
+    #         self.skip_indent_until_write = False
+
+    #     elif isinstance(screen, renpy.sl2.slast.SLScreen):
+    #         def print_atl_callback(linenumber, indent_level, atl):
+    #             self.skip_indent_until_write = False
+    #             old_linenumber = self.linenumber
+    #             self.linenumber = linenumber
+    #             with self.increase_indent(indent_level - self.indent_level):
+    #                 self.print_atl(atl)
+    #             new_linenumber = self.linenumber
+    #             self.linenumber = old_linenumber
+    #             return new_linenumber
+
+    #         self.linenumber = sl2decompiler.pprint(self.out_file, screen, print_atl_callback,
+    #                                 self.indent_level,
+    #                                 self.linenumber,
+    #                                 self.skip_indent_until_write,
+    #                                 self.printlock,
+    #                                 self.tag_outside_block)
+    #         self.skip_indent_until_write = False
+    #     else:
+    #         self.print_unknown(screen)
+
+    # @dispatch(renpy.ast.Testcase)
+    # def print_testcase(self, ast, indent):
+    #     self.require_init()
+    #     self.lines[ast.loc[1]] = (indent, 'testcase %s:' % ast.label)
+    #     self.linenumber = testcasedecompiler.pprint(self.out_file, ast.test.block, self.indent_level + 1,
+    #                             self.linenumber,
+    #                             self.skip_indent_until_write,
+    #                             self.printlock)
+    #     self.skip_indent_until_write = False
+
+    @dispatch(renpy.ast.RPY)
+    def print_RPY(self, ast, indent):
+        self.lines[ast.loc[1]] = (indent, "rpy {} {}".format(ast.rest[0], ast.rest[1]))
+
+    @dispatch(renpy.ast.Camera)
+    def print_Camera(self, ast, indent):
+        self.lines[ast.linenumber] = (indent, "camera " + ast.layer)
+        if ast.at_list != []:
+            self.lines[ast.linenumber][1] += " at " + ast.at_list[0]
+        if ast.atl is not None:
+            self.lines[ast.linenumber][1] += ":"
+            self.print_atl(ast.atl, indent + 1)
