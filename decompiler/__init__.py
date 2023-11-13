@@ -148,34 +148,37 @@ class Decompiler(DecompilerBase):
             self.lines[ast.loc[1]] = (indent, "contains:")
             self.print_atl(child, indent + 1)
 
-    # @dispatch(renpy.atl.RawChoice)
-    # def print_atl_rawchoice(self, ast, indent):
-    #     for chance, block in ast.choices:
+    @dispatch(renpy.atl.RawChoice)
+    def print_atl_rawchoice(self, ast, indent):
+        for chance, block in ast.choices:
+            self.lines[block.loc[1]-1] = (indent, "choice")
+            if chance != "1.0":
+                self.lines[block.loc[1]-1][1] += " %s" % chance
+            self.lines[block.loc[1]-1][1] += ":"
+            self.print_atl(block, indent + 1)
+        if (self.index + 1 < len(self.block) and
+        	isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
+            """We do not know exactly where the last line of the block ends,
+            but we will assume that this is a one-line text.
+            When adding lines to the file, we need to check if this line is not occupied
+            and look for the nearest empty one below."""
+            self.lines[ast.choices[-1][1].loc[1] + 1] = (indent, "pass")
 
-    #         self.indent()
-    #         self.write("choice")
-    #         if chance != "1.0":
-    #             self.write(" %s" % chance)
-    #         self.write(":")
-    #         self.print_atl(block)
-    #     if (self.index + 1 < len(self.block) and
-    #     	isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
-    #         self.indent()
-    #         self.write("pass")
-
-    # @dispatch(store.ATL.RawChoice)
-    # def print_atl_rawchoice(self, ast):
-    #     for loc, chance, block in ast.choices:
-    #         self.indent()
-    #         self.write("choice")
-    #         if chance != "1.0":
-    #             self.write(" %s" % chance)
-    #         self.write(":")
-    #         self.print_atl(block)
-    #     if (self.index + 1 < len(self.block) and
-    #     	isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
-    #         self.indent()
-    #         self.write("pass")
+    @dispatch(store.ATL.RawChoice)
+    def print_atl_rawchoice(self, ast, indent):
+        for loc, chance, block in ast.choices:
+            self.lines[block.loc[1]-1] = (indent, "choice")
+            if chance != "1.0":
+                self.lines[block.loc[1]-1][1] += " %s" % chance
+            self.lines[block.loc[1]-1][1] += ":"
+            self.print_atl(block, indent + 1)
+        if (self.index + 1 < len(self.block) and
+        	isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
+            """We do not know exactly where the last line of the block ends,
+            but we will assume that this is a one-line text.
+            When adding lines to the file, we need to check if this line is not occupied
+            and look for the nearest empty one below."""
+            self.lines[ast.choices[-1][1].loc[1] + 1] = (indent, "pass")
 
     # @dispatch(renpy.atl.RawContainsExpr)
     # def print_atl_rawcontainsexpr(self, ast, indent):
