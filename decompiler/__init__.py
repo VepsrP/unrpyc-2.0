@@ -659,3 +659,43 @@ class Decompiler(DecompilerBase):
             self.lines[linenumber] = (indent, content)
             if block:
                     self.print_lex(block, indent + 1)
+
+    @dispatch(renpy.ast.PostUserStatement)
+    def print_postuserstatement(self, ast, indent):
+        pass
+
+    @dispatch(renpy.ast.Style)
+    def print_style(self, ast, indent):
+        self.require_init()
+        keywords = {ast.linenumber: WordConcatenator(False, True)}
+
+        # These don't store a line number, so just put them on the first line
+        if ast.parent is not None:
+            keywords[ast.linenumber].append("is %s" % ast.parent)
+        if ast.clear:
+            keywords[ast.linenumber].append("clear")
+        if ast.take is not None:
+            keywords[ast.linenumber].append("take %s" % ast.take)
+        for delname in ast.delattr:
+            keywords[ast.linenumber].append("del %s" % delname)
+
+        # These do store a line number
+        if ast.variant is not None:
+            if ast.variant.linenumber not in keywords:
+                keywords[ast.variant.linenumber] = WordConcatenator(False)
+            keywords[ast.variant.linenumber].append("variant %s" % ast.variant)
+        for key, value in ast.properties.items():
+            if value.linenumber not in keywords:
+                keywords[value.linenumber] = WordConcatenator(False)
+            keywords[value.linenumber].append("%s %s" % (key, value))
+
+        keywords = sorted([(k, v.join()) for k, v in keywords.items()],
+                          key=itemgetter(0))
+        
+        self.lines[ast.linenumber] = (indent, "style %s" % ast.style_name)
+        if keywords[0][1]:
+            self.lines[ast.linenumber][1] += " %s" % keywords[0][1]
+        if len(keywords) > 1:
+            self.lines[ast.linenumber][1] += ":"
+            for i in keywords[1:]:
+                self.lines[i[0]] = (indent + 1,i[1])
