@@ -379,40 +379,40 @@ class Decompiler(DecompilerBase):
     def print_jump(self, ast, indent):
         self.lines[ast.linenumber] = (indent, "jump %s%s" % ("expression " if ast.expression else "", ast.target))
 
-    # @dispatch(renpy.ast.Call)
-    # def print_call(self, ast, indent):
-    #     words = WordConcatenator(False)
-    #     words.append("call")
-    #     if ast.expression:
-    #         words.append("expression")
-    #     words.append(ast.label)
+    @dispatch(renpy.ast.Call)
+    def print_call(self, ast, indent):
+        words = WordConcatenator(False)
+        words.append("call")
+        if ast.expression:
+            words.append("expression")
+        words.append(ast.label)
 
-    #     if hasattr(ast, 'arguments') and ast.arguments is not None:
-    #         if ast.expression:
-    #             words.append("pass")
-    #         words.append(reconstruct_arginfo(ast.arguments))
+        if hasattr(ast, 'arguments') and ast.arguments is not None:
+            if ast.expression:
+                words.append("pass")
+            words.append(reconstruct_arginfo(ast.arguments))
 
-    #     # We don't have to check if there's enough elements here,
-    #     # since a Label or a Pass is always emitted after a Call.
-    #     next_block = convert_ast(self.block[self.index + 1])
-    #     if isinstance(next_block, renpy.ast.Label):
-    #         words.append("from %s" % next_block.name)
+        # We don't have to check if there's enough elements here,
+        # since a Label or a Pass is always emitted after a Call.
+        next_block = convert_ast(self.block[self.index + 1])
+        if isinstance(next_block, renpy.ast.Label):
+            words.append("from %s" % next_block.name)
 
-    #     self.lines[ast.linenumber] = (indent, words.join())
+        self.lines[ast.linenumber] = (indent, words.join())
 
-    # @dispatch(renpy.ast.Return)
-    # def print_return(self, ast, indent):
-    #     if ((not hasattr(ast, 'expression') or ast.expression is None) and self.parent is None and
-    #         self.index + 1 == len(self.block) and self.index and
-    #         ast.linenumber == self.block[self.index - 1].linenumber):
-    #         # As of Ren'Py commit 356c6e34, a return statement is added to
-    #         # the end of each rpyc file. Don't include this in the source.
-    #         return
+    @dispatch(renpy.ast.Return)
+    def print_return(self, ast, indent):
+        if ((not hasattr(ast, 'expression') or ast.expression is None) and self.parent is None and
+            self.index + 1 == len(self.block) and self.index and
+            ast.linenumber == self.block[self.index - 1].linenumber):
+            # As of Ren'Py commit 356c6e34, a return statement is added to
+            # the end of each rpyc file. Don't include this in the source.
+            return
 
-    #     self.lines[ast.linenumber] = (indent, "return")
+        self.lines[ast.linenumber] = (indent, "return")
 
-    #     if hasattr(ast, 'expression') and ast.expression is not None:
-    #         self.lines[ast.linenumber][1] += " %s" % ast.expression
+        if hasattr(ast, 'expression') and ast.expression is not None:
+            self.lines[ast.linenumber][1] += " %s" % ast.expression
 
     @dispatch(renpy.ast.If)
     def print_if(self, ast, indent):
