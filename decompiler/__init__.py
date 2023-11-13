@@ -430,3 +430,166 @@ class Decompiler(DecompilerBase):
                 else:
                     lines[block[0].linenumber - 1] = (indent, statement() % condition)
             self.print_nodes(block, indent + 1)
+
+    @dispatch(renpy.ast.While)
+    def print_while(self, ast, indent):
+        lines[ast.block[0].linenumber - 1] = (indent,"while %s:" % ast.condition)
+
+        self.print_nodes(ast.block, indent + 1)
+
+    # @dispatch(renpy.ast.Pass)
+    # def print_pass(self, ast):
+    #     if (self.index and
+    #         isinstance(self.block[self.index - 1], renpy.ast.Call)):
+    #         return
+
+    #     if (self.index > 1 and
+    #         isinstance(self.block[self.index - 2], renpy.ast.Call) and
+    #         isinstance(self.block[self.index - 1], renpy.ast.Label) and
+    #         self.block[self.index - 2].linenumber == ast.linenumber):
+    #         return
+
+    #     self.advance_to_line(ast.linenumber)
+    #     self.indent()
+    #     self.write("pass")
+
+    def require_init(self):
+        if not self.in_init:
+            self.missing_init = True
+
+    # def set_best_init_offset(self, nodes):
+    #     votes = {}
+    #     for ast in nodes:
+    #         ast = util.convert_ast(ast)
+    #         if not isinstance(ast, renpy.ast.Init):
+    #             continue
+    #         offset = ast.priority
+    #         # Keep this block in sync with print_init
+    #         if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
+    #             if isinstance(ast.block[0], renpy.ast.Screen):
+    #                 offset -= -500
+    #             elif isinstance(ast.block[0], renpy.ast.Testcase):
+    #                 offset -= 500
+    #             elif isinstance(ast.block[0], renpy.ast.Image):
+    #                 offset -= 500 if self.is_356c6e34_or_later else 990
+    #         votes[offset] = votes.get(offset, 0) + 1
+    #     if votes:
+    #         winner = max(votes, key=votes.get)
+    #         # It's only worth setting an init offset if it would save
+    #         # more than one priority specification versus not setting one.
+    #         if votes.get(0, 0) + 1 < votes[winner]:
+    #             self.set_init_offset(winner)
+
+    # def set_init_offset(self, offset):
+    #     def do_set_init_offset(linenumber):
+    #         # if we got to the end of the file and haven't emitted this yet,
+    #         # don't bother, since it only applies to stuff below it.
+    #         if linenumber is None or linenumber - self.linenumber <= 1 or self.indent_level:
+    #             return True
+    #         if offset != self.init_offset:
+    #             self.indent()
+    #             self.write("init offset = %s" % offset)
+    #             self.init_offset = offset
+    #         return False
+
+    #     self.do_when_blank_line(do_set_init_offset)
+
+    # @dispatch(renpy.ast.Init)
+    # def print_init(self, ast):
+    #     in_init = self.in_init
+    #     self.in_init = True
+    #     try:
+    #         # A bunch of statements can have implicit init blocks
+    #         # Define has a default priority of 0, screen of -500 and image of 990
+    #         # Keep this block in sync with set_best_init_offset
+    #         # TODO merge this and require_init into another decorator or something
+    #         if len(ast.block) == 1 and (
+    #             isinstance(ast.block[0], (renpy.ast.Define,
+    #                                       renpy.ast.Default,
+    #                                       renpy.ast.Transform)) or
+    #             (ast.priority == -500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Screen)) or
+    #             (ast.priority == self.init_offset and isinstance(ast.block[0], renpy.ast.Style)) or
+    #             (ast.priority == 500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Testcase)) or
+    #             (ast.priority == 0 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("layeredimage ")) or
+    #             # Images had their default init priority changed in commit 679f9e31 (Ren'Py 6.99.10).
+    #             # We don't have any way of detecting this commit, though. The closest one we can
+    #             # detect is 356c6e34 (Ren'Py 6.99). For any versions in between these, we'll emit
+    #             # an unnecessary "init 990 " before image statements, but this doesn't affect the AST,
+    #             # and any other solution would result in incorrect code being generated in some cases.
+    #             (ast.priority == (500 if self.is_356c6e34_or_later else 990) + self.init_offset and isinstance(ast.block[0], renpy.ast.Image))) and not (
+    #             self.should_come_before(ast, ast.block[0])):
+    #             # If they fulfill this criteria we just print the contained statement
+    #             self.print_nodes(ast.block)
+
+    #         # translatestring statements are split apart and put in an init block.
+    #         elif (len(ast.block) > 0 and
+    #                 ast.priority == self.init_offset and
+    #                 all(isinstance(i, renpy.ast.TranslateString) for i in ast.block) and
+    #                 all(i.language == ast.block[0].language for i in ast.block[1:])):
+    #             self.print_nodes(ast.block)
+
+    #         else:
+    #             self.indent()
+    #             self.write("init")
+    #             if ast.priority != self.init_offset:
+    #                 self.write(" %d" % (ast.priority - self.init_offset))
+
+    #             if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
+    #                 self.write(" ")
+    #                 self.skip_indent_until_write = True
+    #                 self.print_nodes(ast.block)
+    #             else:
+    #                 self.write(":")
+    #                 self.print_nodes(ast.block, 1)
+    #     finally:
+    #         self.in_init = in_init
+
+    # def print_say_inside_menu(self):
+    #     self.print_say(self.say_inside_menu, inmenu=True)
+    #     self.say_inside_menu = None
+
+    # def print_menu_item(self, label, condition, block, arguments):
+    #     self.indent()
+    #     self.write('"%s"' % string_escape(label))
+
+    #     if arguments is not None:
+    #         self.write(reconstruct_arginfo(arguments))
+
+    #     if block is not None:
+    #         if ((PY2 and isinstance(condition, unicode)) or (PY3 and isinstance(condition, str))) and (condition != 'True'):
+    #             self.write(" if %s" % condition)
+    #         self.write(":")
+    #         self.print_nodes(block, 1)
+
+    @dispatch(renpy.ast.Menu)
+    def print_menu(self, ast, indent):
+        lines[ast.linenumber] = (indent, "menu")
+        if self.label_inside_menu is not None:
+            lines[ast.linenumber][1] += " %s" % self.label_inside_menu.name
+            self.label_inside_menu = None
+
+        if hasattr(ast, "arguments") and ast.arguments is not None:
+            lines[ast.linenumber][1] += reconstruct_arginfo(ast.arguments)
+
+        lines[ast.linenumber][1] += ":"
+
+        with self.increase_indent():
+            if ast.with_ is not None:
+                lines[ast.linenumber+1] = (indent + 1, "with %s" % ast.with_)
+
+            if ast.set is not None:
+                if lines.get(ast.linenumber + 1) == None:
+                    lines[ast.linenumber+1] = (indent + 1, "set %s" % ast.set)
+                else:
+                    lines[ast.linenumber+2] = (indent + 1, "set %s" % ast.set)
+
+            if hasattr(ast, "item_arguments"):
+                item_arguments = ast.item_arguments
+            else:
+                item_arguments = [None] * len(ast.items)
+
+            for (label, condition, block), arguments in zip(ast.items, item_arguments):
+                if self.translator:
+                    label = self.translator.strings.get(label, label)
+                
+                self.print_menu_item(label, condition, block, arguments)
