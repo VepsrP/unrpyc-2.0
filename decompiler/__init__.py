@@ -526,7 +526,8 @@ class Decompiler(DecompilerBase):
     #                 ast.priority == self.init_offset and
     #                 all(isinstance(i, renpy.ast.TranslateString) for i in ast.block) and
     #                 all(i.language == ast.block[0].language for i in ast.block[1:])):
-    #             self.print_nodes(ast.block)
+    #             self.lines[ast.linenumber] = (indent, "translate %s strings:" % ast.block[0].language or "None")
+    #             self.print_nodes(ast.block, indent + 1)
 
     #         else:
     #             self.indent()
@@ -699,3 +700,29 @@ class Decompiler(DecompilerBase):
             self.lines[ast.linenumber][1] += ":"
             for i in keywords[1:]:
                 self.lines[i[0]] = (indent + 1,i[1])
+
+    @dispatch(renpy.ast.Translate)
+    def print_translate(self, ast, indent):
+        self.lines[ast.loc[1]] = (indent, "translate %s %s:" % (ast.language or "None", ast.identifier))
+
+        self.print_nodes(ast.block, indent + 1)
+
+    @dispatch(renpy.ast.EndTranslate)
+    def print_endtranslate(self, ast, indent):
+        # an implicitly added node which does nothing...
+        pass
+
+    @dispatch(renpy.ast.TranslateString)
+    def print_translatestring(self, ast, indent):
+        self.require_init()
+
+        # TranslateString's linenumber refers to the line with "old", not to the
+        # line with "translate %s strings:"
+        with self.increase_indent():
+            self.advance_to_line(ast.linenumber)
+            self.indent()
+            self.lines[ast.linenumber] = (indent, 'old "%s"' % string_escape(ast.old))
+            if hasattr(ast, 'newloc'):
+                self.lines[ast.newloc[1]] = (indent, 'new "%s"' % string_escape(ast.new))
+            else:
+                self.lines[ast.linenumber + 1] = (indent, 'new "%s"' % string_escape(ast.new))
