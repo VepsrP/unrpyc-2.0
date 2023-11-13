@@ -180,15 +180,13 @@ class Decompiler(DecompilerBase):
             and look for the nearest empty one below."""
             self.lines[ast.choices[-1][1].loc[1] + 1] = (indent, "pass")
 
-    # @dispatch(renpy.atl.RawContainsExpr)
-    # def print_atl_rawcontainsexpr(self, ast, indent):
-    #     self.lines[]
-    #     self.write("contains %s" % ast.expression)
+    @dispatch(renpy.atl.RawContainsExpr)
+    def print_atl_rawcontainsexpr(self, ast, indent):
+        self.lines[ast.loc[1]] = (indent, "contains %s" % ast.expression)
 
-    # @dispatch(renpy.atl.RawEvent)
-    # def print_atl_rawevent(self, ast):
-    #     self.indent()
-    #     self.write("event %s" % ast.name)
+    @dispatch(renpy.atl.RawEvent)
+    def print_atl_rawevent(self, ast, indent):
+        self.lines[ast.loc[1]] = (indent, "event %s" % ast.name)
 
     @dispatch(renpy.atl.RawFunction)
     def print_atl_rawfunction(self, ast, indent):
@@ -314,31 +312,29 @@ class Decompiler(DecompilerBase):
             self.lines[ast.loc[1]][1] += "with %s" % self.paired_with
             self.paired_with = True
 
-    # @dispatch(renpy.ast.With)
-    # def print_with(self, ast, indent):
-    #     # the 'paired' attribute indicates that this with
-    #     # and with node afterwards are part of a postfix
-    #     # with statement. detect this and process it properly
-    #     if hasattr(ast, "paired") and ast.paired is not None:
-    #         self.block[self.index + 2] = convert_ast(self.block[self.index + 2])
-    #         # Sanity check. check if there's a matching with statement two nodes further
-    #         if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
-    #                self.block[self.index + 2].expr == ast.paired):
-    #             raise Exception("Unmatched paired with {0} != {1}".format(
-    #                             repr(self.paired_with), repr(ast.expr)))
+    @dispatch(renpy.ast.With)
+    def print_with(self, ast, indent):
+        # the 'paired' attribute indicates that this with
+        # and with node afterwards are part of a postfix
+        # with statement. detect this and process it properly
+        if hasattr(ast, "paired") and ast.paired is not None:
+            self.block[self.index + 2] = convert_ast(self.block[self.index + 2])
+            # Sanity check. check if there's a matching with statement two nodes further
+            if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
+                   self.block[self.index + 2].expr == ast.paired):
+                raise Exception("Unmatched paired with {0} != {1}".format(
+                                repr(self.paired_with), repr(ast.expr)))
 
-    #         self.paired_with = ast.paired
+            self.paired_with = ast.paired
 
-    #     elif self.paired_with:
-    #         # Check if it was consumed by a show/scene statement
-    #         if self.paired_with is not True:
-    #             self.write(" with %s" % ast.expr)
-    #         self.paired_with = False
-    #     else:
-    #         self.advance_to_line(ast.linenumber)
-    #         self.indent()
-    #         self.write("with %s" % ast.expr)
-    #         self.paired_with = False
+        elif self.paired_with:
+            # Check if it was consumed by a show/scene statement
+            if self.paired_with is not True:
+                self.print_unknown(ast)
+            self.paired_with = False
+        else:
+            self.lines[ast.linenumber] = (indent, "with %s" % ast.expr)
+            self.paired_with = False
 
     # @dispatch(renpy.ast.Label)
     # def print_label(self, ast):
