@@ -615,3 +615,47 @@ class Decompiler(DecompilerBase):
 
         else:
             self.lines[ast.linenumber][1] += "$ %s" % code
+
+    @dispatch(renpy.ast.EarlyPython)
+    def print_earlypython(self, ast, indent):
+        self.print_python(ast, indent, early=True)
+
+    # @dispatch(renpy.ast.Define)
+    # @dispatch(renpy.ast.Default)
+    # def print_define(self, ast, indent):
+    #     self.require_init()
+    #     if isinstance(ast, renpy.ast.Default):
+    #         name = "default"
+    #     else:
+    #         name = "define"
+
+    #     # If we have an implicit init block with a non-default priority, we need to store the priority here.
+    #     priority = ""
+    #     if isinstance(self.parent, renpy.ast.Init):
+    #         init = self.parent
+    #         if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
+    #             priority = " %d" % (init.priority - self.init_offset)
+    #     index = ""
+    #     if hasattr(ast, "index") and ast.index is not None:
+    #         index = "[%s]" % ast.index.source
+    #     if not hasattr(ast, "store") or ast.store == "store":
+    #         self.lines[ast.linenumber] = (indent, "%s%s %s%s = %s" % (name, priority, ast.varname, index, ast.code.source))
+    #     else:
+    #         self.lines[ast.linenumber] = (indent, "%s%s %s.%s%s = %s" % (name, priority, ast.store[6:], ast.varname, index, ast.code.source))
+
+    @dispatch(renpy.ast.Say)
+    def print_say(self, ast, indent):
+        self.lines[ast.linenumber] = (indent, say_get_code(ast))
+
+    @dispatch(renpy.ast.UserStatement)
+    def print_userstatement(self, ast, indent):
+        self.lines[ast.linenumber] = (indent, ast.line)
+
+        if hasattr(ast, "block") and ast.block:
+            self.print_lex(ast.block, indent + 1)
+
+    def print_lex(self, lex, indent):
+        for file, linenumber, content, block in lex:
+            self.lines[linenumber] = (indent, content)
+            if block:
+                    self.print_lex(block, indent + 1)
