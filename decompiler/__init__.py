@@ -48,14 +48,14 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 
 # Main API
 
-lines = dict()
-
 def pprint(out_file, ast, indent_level=0,
            decompile_python=False, printlock=None, translator=None, init_offset=False, tag_outside_block=False):
     Decompiler(out_file, printlock=printlock,
                decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset, tag_outside_block)
 
 class Decompiler(DecompilerBase):
+
+    lines = dict()
 
     dispatch = Dispatcher()
 
@@ -75,7 +75,7 @@ class Decompiler(DecompilerBase):
         # get set to ('', 0). That isn't supposed to be valid syntax, but it's
         # the only thing that can generate that.
         elif ast.loc != ('', 0):
-            lines[ast.loc[1]] = (indent+1, "pass")
+            self.self.lines[ast.loc[1]] = (indent+1, "pass")
 
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast, indent):
@@ -130,22 +130,22 @@ class Decompiler(DecompilerBase):
 
         to_write = warp + words.join()
         if to_write:
-            lines[ast.loc[1]] = (indent, to_write)
+            self.lines[ast.loc[1]] = (indent, to_write)
         else:
             # A trailing comma results in an empty RawMultipurpose being
             # generated on the same line as the last real one.
-            lines[ast.loc[1]] = (indent, ",")
+            self.lines[ast.loc[1]] = (indent, ",")
 
     @dispatch(renpy.atl.RawBlock)
     @dispatch(store.ATL.RawBlock)
     def print_atl_rawblock(self, ast, indent):
-        lines[ast.loc[1]-1] = (indent, "block:")
+        self.lines[ast.loc[1]-1] = (indent, "block:")
         self.print_atl(ast, indent + 1)
 
     @dispatch(renpy.atl.RawChild)
     def print_atl_rawchild(self, ast, indent):
         for child in ast.children:
-            lines[ast.loc[1]] = (indent, "contains:")
+            self.lines[ast.loc[1]] = (indent, "contains:")
             self.print_atl(child, indent + 1)
 
     # @dispatch(renpy.atl.RawChoice)
@@ -179,7 +179,7 @@ class Decompiler(DecompilerBase):
 
     # @dispatch(renpy.atl.RawContainsExpr)
     # def print_atl_rawcontainsexpr(self, ast, indent):
-    #     lines[]
+    #     self.lines[]
     #     self.write("contains %s" % ast.expression)
 
     # @dispatch(renpy.atl.RawEvent)
@@ -189,19 +189,19 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.atl.RawFunction)
     def print_atl_rawfunction(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "function %s" % ast.expr)
+        self.lines[ast.loc[1]] = (indent, "function %s" % ast.expr)
 
     @dispatch(renpy.atl.RawOn)
     def print_atl_rawon(self, ast, indent):
         for name, block in sorted(ast.handlers.items(),
                                   key=lambda i: i[1].loc[1]):
-            lines[block.loc[1] - 1] = (indent, "on %s:" % name)
+            self.lines[block.loc[1] - 1] = (indent, "on %s:" % name)
             self.print_atl(block, indent + 1)
 
     @dispatch(renpy.atl.RawParallel)
     def print_atl_rawparallel(self, ast, indent):
         for block in ast.blocks:
-            lines[block.loc[1] - 1] = (indent, "parallel:")
+            self.lines[block.loc[1] - 1] = (indent, "parallel:")
             self.print_atl(block, indent + 1)
         if (self.index + 1 < len(self.block) and
             isinstance(self.block[self.index + 1], renpy.atl.RawParallel)):
@@ -210,13 +210,13 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.atl.RawRepeat)
     @dispatch(store.ATL.RawRepeat)
     def print_atl_rawrepeat(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "repeat")
+        self.lines[ast.loc[1]] = (indent, "repeat")
         if ast.repeats:
-            lines[ast.loc[1]][1] += " %s" % ast.repeats # not sure if this is even a string
+            self.lines[ast.loc[1]][1] += " %s" % ast.repeats # not sure if this is even a string
 
     @dispatch(renpy.atl.RawTime)
     def print_atl_rawtime(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "time %s" % ast.time)
+        self.lines[ast.loc[1]] = (indent, "time %s" % ast.time)
 
     def print_imspec(self, imspec):
         return False
@@ -224,12 +224,12 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.Image)
     def print_image(self, ast, indent):
         self.require_init()
-        lines[ast.loc[1]] = (indent, "image %s" % ' '.join(ast.imgname))
+        self.lines[ast.loc[1]] = (indent, "image %s" % ' '.join(ast.imgname))
         if ast.code is not None:
-            lines[ast.loc[1]][1] += " = %s" % ast.code.source
+            self.lines[ast.loc[1]][1] += " = %s" % ast.code.source
         else:
             if hasattr(ast, "atl") and ast.atl is not None:
-                lines[ast.loc[1]][1] += ":"
+                self.lines[ast.loc[1]][1] += ":"
                 self.print_atl(ast.atl, indent + 1)
 
     @dispatch(renpy.ast.Transform)
@@ -242,73 +242,73 @@ class Decompiler(DecompilerBase):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
                 priority = " %d" % (init.priority - self.init_offset)
-        lines[ast.loc[1]] = (indent, "transform%s %s" % (priority, ast.varname))
+        self.lines[ast.loc[1]] = (indent, "transform%s %s" % (priority, ast.varname))
         if ast.parameters is not None:
-            lines[ast.loc[1]][1] += reconstruct_paraminfo(ast.parameters)
+            self.lines[ast.loc[1]][1] += reconstruct_paraminfo(ast.parameters)
 
         if hasattr(ast, "atl") and ast.atl is not None:
-            lines[ast.loc[1]][1] += ":"
+            self.lines[ast.loc[1]][1] += ":"
             self.print_atl(ast.atl, indent + 1)
 
     # Directing related functions
 
     @dispatch(renpy.ast.Show)
     def print_show(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "show ")
+        self.lines[ast.loc[1]] = (indent, "show ")
         needs_space = self.print_imspec(ast.imspec)
 
         if self.paired_with:
             if needs_space:
-                lines[ast.loc[1]][1] += " "
-            lines[ast.loc[1]][1] += "with %s" % self.paired_with
+                self.lines[ast.loc[1]][1] += " "
+            self.lines[ast.loc[1]][1] += "with %s" % self.paired_with
             self.paired_with = True
 
         if hasattr(ast, "atl") and ast.atl is not None:
-            lines[ast.loc[1]][1] += ":"
+            self.lines[ast.loc[1]][1] += ":"
             self.print_atl(ast.atl, indent + 1)
 
     @dispatch(renpy.ast.ShowLayer)
     def print_showlayer(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "show layer %s" % ast.layer)
+        self.lines[ast.loc[1]] = (indent, "show layer %s" % ast.layer)
 
         if ast.at_list:
-            lines[ast.loc[1]][1] += " at %s" % ', '.join(ast.at_list)
+            self.lines[ast.loc[1]][1] += " at %s" % ', '.join(ast.at_list)
 
         if hasattr(ast, "atl") and ast.atl is not None:
-            lines[ast.loc[1]][1] += ":"
+            self.lines[ast.loc[1]][1] += ":"
             self.print_atl(ast.atl, indent + 1)
 
     @dispatch(renpy.ast.Scene)
     def print_scene(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "scene")
+        self.lines[ast.loc[1]] = (indent, "scene")
 
         if ast.imspec is None:
             if (PY2 and isinstance(ast.layer, unicode) or (PY3 and isinstance(ast.layer, str))):
-                    lines[ast.loc[1]][1] += " onlayer %s" % ast.layer
+                    self.lines[ast.loc[1]][1] += " onlayer %s" % ast.layer
 
             needs_space = True
         else:
-            lines[ast.loc[1]][1] += " "
+            self.lines[ast.loc[1]][1] += " "
             needs_space = self.print_imspec(ast.imspec)
 
         if self.paired_with:
             if needs_space:
-                lines[ast.loc[1]][1] += " "
-            lines[ast.loc[1]][1] += "with %s" % self.paired_with
+                self.lines[ast.loc[1]][1] += " "
+            self.lines[ast.loc[1]][1] += "with %s" % self.paired_with
             self.paired_with = True
 
         if hasattr(ast, "atl") and ast.atl is not None:
-            lines[ast.loc[1]][1] += ":"
+            self.lines[ast.loc[1]][1] += ":"
             self.print_atl(ast.atl, indent + 1)
 
     @dispatch(renpy.ast.Hide)
     def print_hide(self, ast, indent):
-        lines[ast.loc[1]] = (indent, "hide ")
+        self.lines[ast.loc[1]] = (indent, "hide ")
         needs_space = self.print_imspec(ast.imspec)
         if self.paired_with:
             if needs_space:
-                lines[ast.loc[1]][1] += " "
-            lines[ast.loc[1]][1] += "with %s" % self.paired_with
+                self.lines[ast.loc[1]][1] += " "
+            self.lines[ast.loc[1]][1] += "with %s" % self.paired_with
             self.paired_with = True
 
     # @dispatch(renpy.ast.With)
@@ -378,7 +378,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Jump)
     def print_jump(self, ast, indent):
-        lines[ast.linenumber] = (indent, "jump %s%s" % ("expression " if ast.expression else "", ast.target))
+        self.lines[ast.linenumber] = (indent, "jump %s%s" % ("expression " if ast.expression else "", ast.target))
 
     # @dispatch(renpy.ast.Call)
     # def print_call(self, ast, indent):
@@ -399,7 +399,7 @@ class Decompiler(DecompilerBase):
     #     if isinstance(next_block, renpy.ast.Label):
     #         words.append("from %s" % next_block.name)
 
-    #     lines[ast.linenumber] = (indent, words.join())
+    #     self.lines[ast.linenumber] = (indent, words.join())
 
     # @dispatch(renpy.ast.Return)
     # def print_return(self, ast, indent):
@@ -410,10 +410,10 @@ class Decompiler(DecompilerBase):
     #         # the end of each rpyc file. Don't include this in the source.
     #         return
 
-    #     lines[ast.linenumber] = (indent, "return")
+    #     self.lines[ast.linenumber] = (indent, "return")
 
     #     if hasattr(ast, 'expression') and ast.expression is not None:
-    #         lines[ast.linenumber][1] += " %s" % ast.expression
+    #         self.lines[ast.linenumber][1] += " %s" % ast.expression
 
     @dispatch(renpy.ast.If)
     def print_if(self, ast, indent):
@@ -423,17 +423,17 @@ class Decompiler(DecompilerBase):
             # The non-Unicode string "True" is the condition for else:
 
             if((i > 0) and (i + 1) == len(ast.entries) and ((PY2 and not isinstance(condition, unicode)) or (PY3 and not isinstance(condition, str)) or condition == u'True')):
-                lines[block[0].linenumber - 1] = (indent, "else:")
+                self.lines[block[0].linenumber - 1] = (indent, "else:")
             else:
                 if(hasattr(condition, 'linenumber')):
-                    lines[condition.linenumber] = (indent, statement() % condition)
+                    self.lines[condition.linenumber] = (indent, statement() % condition)
                 else:
-                    lines[block[0].linenumber - 1] = (indent, statement() % condition)
+                    self.lines[block[0].linenumber - 1] = (indent, statement() % condition)
             self.print_nodes(block, indent + 1)
 
     @dispatch(renpy.ast.While)
     def print_while(self, ast, indent):
-        lines[ast.block[0].linenumber - 1] = (indent,"while %s:" % ast.condition)
+        self.lines[ast.block[0].linenumber - 1] = (indent,"while %s:" % ast.condition)
 
         self.print_nodes(ast.block, indent + 1)
 
@@ -563,25 +563,25 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Menu)
     def print_menu(self, ast, indent):
-        lines[ast.linenumber] = (indent, "menu")
+        self.lines[ast.linenumber] = (indent, "menu")
         if self.label_inside_menu is not None:
-            lines[ast.linenumber][1] += " %s" % self.label_inside_menu.name
+            self.lines[ast.linenumber][1] += " %s" % self.label_inside_menu.name
             self.label_inside_menu = None
 
         if hasattr(ast, "arguments") and ast.arguments is not None:
-            lines[ast.linenumber][1] += reconstruct_arginfo(ast.arguments)
+            self.lines[ast.linenumber][1] += reconstruct_arginfo(ast.arguments)
 
-        lines[ast.linenumber][1] += ":"
+        self.lines[ast.linenumber][1] += ":"
 
         with self.increase_indent():
             if ast.with_ is not None:
-                lines[ast.linenumber+1] = (indent + 1, "with %s" % ast.with_)
+                self.lines[ast.linenumber+1] = (indent + 1, "with %s" % ast.with_)
 
             if ast.set is not None:
-                if lines.get(ast.linenumber + 1) == None:
-                    lines[ast.linenumber+1] = (indent + 1, "set %s" % ast.set)
+                if self.lines.get(ast.linenumber + 1) == None:
+                    self.lines[ast.linenumber+1] = (indent + 1, "set %s" % ast.set)
                 else:
-                    lines[ast.linenumber+2] = (indent + 1, "set %s" % ast.set)
+                    self.lines[ast.linenumber+2] = (indent + 1, "set %s" % ast.set)
 
             if hasattr(ast, "item_arguments"):
                 item_arguments = ast.item_arguments
@@ -593,3 +593,25 @@ class Decompiler(DecompilerBase):
                     label = self.translator.strings.get(label, label)
                 
                 self.print_menu_item(label, condition, block, arguments)
+
+    @dispatch(renpy.ast.Python)
+    def print_python(self, ast, indent, early=False):
+
+        code = ast.code.source
+        if code[0] == '\n':
+            code = code[1:]
+            self.lines[ast.linenumber] = (indent, "python")
+            if early:
+                self.lines[ast.linenumber][1] += " early"
+            if ast.hide:
+                self.lines[ast.linenumber][1] += " hide"
+            if hasattr(ast, "store") and ast.store != "store":
+                self.lines[ast.linenumber][1] += " in "
+                # Strip prepended "store."
+                self.lines[ast.linenumber][1] += ast.store[6:]
+            self.lines[ast.linenumber][1] += ":"
+
+            self.write_lines(split_logical_lines(code), ast.ast.linenumber + 1)
+
+        else:
+            self.lines[ast.linenumber][1] += "$ %s" % code

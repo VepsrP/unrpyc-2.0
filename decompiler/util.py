@@ -48,16 +48,14 @@ class DecompilerBase(object):
         self.skip_indent_until_write = False
         self.out_file.write(string)
 
-    def write_lines(self, lines):
+    def write_lines(self, lines, linenumber):
         """
         Write each line in lines to the file without writing whitespace-only lines
         """
+        i = 0
         for line in lines:
-            if line == '':
-                self.write('\n')
-            else:
-                self.indent()
-                self.write(line)
+            self.lines[linenumber + i] = (0, line)
+            i += 1
 
     def save_state(self):
         """
