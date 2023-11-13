@@ -27,26 +27,8 @@ class DecompilerBase(object):
         self.skip_indent_until_write = skip_indent_until_write
         if not isinstance(ast, (tuple, list)):
             ast = [ast]
-        self.print_nodes(ast)
+        self.print_nodes(ast, indent_level)
         return self.linenumber
-
-    @contextmanager
-    def increase_indent(self, amount=1):
-        self.indent_level += amount
-        try:
-            yield
-        finally:
-            self.indent_level -= amount
-
-    def write(self, string):
-        """
-        Shorthand method for writing `string` to the file
-        """
-        if(sys.version_info < (3, 0)): string = unicode(string)
-        else: string = str(string)
-        self.linenumber += string.count('\n')
-        self.skip_indent_until_write = False
-        self.out_file.write(string)
 
     def write_lines(self, lines, linenumber):
         """
@@ -108,17 +90,16 @@ class DecompilerBase(object):
         if not self.skip_indent_until_write:
             self.write('\n' + self.indentation * self.indent_level)
 
-    def print_nodes(self, ast, extra_indent=0):
+    def print_nodes(self, ast, indent):
         # This node is a list of nodes
         # Print every node
-        with self.increase_indent(extra_indent):
             self.block_stack.append(ast)
             self.index_stack.append(0)
 
             for i, node in enumerate(ast):
                 self.index_stack[-1] = i
                 node = convert_ast(node)
-                self.print_node(node)
+                self.print_node(node, indent)
 
             self.block_stack.pop()
             self.index_stack.pop()
