@@ -3,7 +3,6 @@ import sys
 import re
 import traceback
 from io import StringIO
-from contextlib import contextmanager
 
 class DecompilerBase(object):
     def __init__(self, out_file=None, indentation='    ', printlock=None):
