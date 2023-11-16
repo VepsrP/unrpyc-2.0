@@ -159,6 +159,8 @@ def revertable_switch(raw_dat):
 
 printlock = Lock()
 
+lines = dict()
+
 # needs class_factory
 import deobfuscate
 
@@ -232,7 +234,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                         no_pyexpr=no_pyexpr)
         else:
-            decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
+            decompiler.pprint(lines, ast, decompile_python=decompile_python, printlock=printlock,
                                             translator=translator, tag_outside_block=tag_outside_block,
                                             init_offset=init_offset)
 

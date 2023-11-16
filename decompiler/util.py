@@ -1,12 +1,10 @@
 from __future__ import unicode_literals
-import sys
 import re
 import traceback
-from io import StringIO
 
 class DecompilerBase(object):
-    def __init__(self, out_file=None, indentation='    ', printlock=None):
-        self.out_file = out_file or sys.stdout
+    def __init__(self, lines = None, indentation='    ', printlock=None):
+        self.lines = lines
         self.indentation = indentation
         self.skip_indent_until_write = False
         self.printlock = printlock
@@ -27,7 +25,6 @@ class DecompilerBase(object):
         if not isinstance(ast, (tuple, list)):
             ast = [ast]
         self.print_nodes(ast, indent_level)
-        return self.linenumber
 
     def write_lines(self, lines, linenumber):
         """
@@ -37,30 +34,6 @@ class DecompilerBase(object):
         for line in lines:
             self.lines[linenumber + i] = (0, line)
             i += 1
-
-    def save_state(self):
-        """
-        Save our current state.
-        """
-        state = (self.out_file, self.skip_indent_until_write, self.linenumber,
-            self.block_stack, self.index_stack, self.indent_level, self.blank_line_queue)
-        self.out_file = StringIO()
-        return state
-
-    def commit_state(self, state):
-        """
-        Commit changes since a saved state.
-        """
-        out_file = state[0]
-        out_file.write(self.out_file.getvalue())
-        self.out_file = out_file
-
-    def rollback_state(self, state):
-        """
-        Roll back to a saved state.
-        """
-        (self.out_file, self.skip_indent_until_write, self.linenumber,
-            self.block_stack, self.index_stack, self.indent_level, self.blank_line_queue) = state
 
     def advance_to_line(self, linenumber):
         # If there was anything that we wanted to do as soon as we found a blank line,

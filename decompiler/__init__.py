@@ -47,14 +47,29 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0,
+def pprint(lines, ast, indent_level=0,
            decompile_python=False, printlock=None, translator=None, init_offset=False, tag_outside_block=False):
-    Decompiler(out_file, printlock=printlock,
+    Decompiler(lines, printlock=printlock,
                decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset, tag_outside_block)
 
 class Decompiler(DecompilerBase):
 
-    lines = dict()
+    def __init__(self, lines=None, decompile_python=False,
+                 indentation = '    ', printlock=None, translator=None):
+        super(Decompiler, self).__init__(lines, indentation, printlock)
+        self.decompile_python = decompile_python
+        self.translator = translator
+
+        self.paired_with = False
+        self.say_inside_menu = None
+        self.label_inside_menu = None
+        self.in_init = False
+        self.missing_init = False
+        self.init_offset = 0
+        self.is_356c6e34_or_later = False
+        self.most_lines_behind = 0
+        self.last_lines_behind = 0
+        self.tag_outside_block = False
 
     dispatch = Dispatcher()
 
@@ -74,7 +89,7 @@ class Decompiler(DecompilerBase):
         # get set to ('', 0). That isn't supposed to be valid syntax, but it's
         # the only thing that can generate that.
         elif ast.loc != ('', 0):
-            self.self.lines[ast.loc[1]] = (indent+1, "pass")
+            self.lines[ast.loc[1]] = (indent+1, "pass")
 
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast, indent):

@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 from __future__ import unicode_literals
-import sys
 from operator import itemgetter
 
 from .util import DecompilerBase, First, reconstruct_paraminfo, \
@@ -35,9 +34,9 @@ import store
 
 # Main API
 
-def pprint(out_file, ast, print_atl_callback, indent_level=0, linenumber=1,
+def pprint(lines, ast, print_atl_callback, indent_level=0, linenumber=1,
            skip_indent_until_write=False, printlock=None, tag_outside_block=False):
-    return SL2Decompiler(print_atl_callback, out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
+    return SL2Decompiler(print_atl_callback, lines, printlock=printlock, tag_outside_block=tag_outside_block).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -47,8 +46,9 @@ class SL2Decompiler(DecompilerBase):
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
 
-    def __init__(self, print_atl_callback, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
-        super(SL2Decompiler, self).__init__(out_file, indentation, printlock)
+    def __init__(self, print_atl_callback, lines=None, indentation = '    ', printlock=None, tag_outside_block=False):
+        super(SL2Decompiler, self).__init__(indentation, printlock)
+        self.lines = lines
         self.print_atl_callback = print_atl_callback
         self.tag_outside_block = tag_outside_block
 
@@ -57,14 +57,13 @@ class SL2Decompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def print_node(self, ast):
-        self.advance_to_line(ast.location[1])
         self.dispatch.get(type(ast), type(self).print_unknown)(self, ast)
 
     @dispatch(sl2.slast.SLScreen)
     def print_screen(self, ast):
 
         # Print the screen statement and create the block
-        self.indent()
+        self.lines
         self.write("screen %s" % ast.name)
         # If we have parameters, print them.
         if ast.parameters:
