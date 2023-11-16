@@ -24,7 +24,6 @@ from .util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo
 from .util import say_get_code
 
 from operator import itemgetter
-from io import StringIO
 import importlib
 if (hasattr(importlib, 'reload')):
     from importlib import reload
