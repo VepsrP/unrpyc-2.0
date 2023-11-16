@@ -336,44 +336,38 @@ class Decompiler(DecompilerBase):
             self.lines[ast.linenumber] = (indent, "with %s" % ast.expr)
             self.paired_with = False
 
-    # @dispatch(renpy.ast.Label)
-    # def print_label(self, ast):
-    #     # If a Call block preceded us, it printed us as "from"
-    #     if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
-    #         return
-    #     remaining_blocks = len(self.block) - self.index
-    #     if remaining_blocks > 1:
-    #         next_ast = self.block[self.index + 1]
-    #         # See if we're the label for a menu, rather than a standalone label.
-    #         if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
-    #             hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
-    #             (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
-    #             isinstance(next_ast, renpy.ast.Say) and
-    #             self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
-    #             self.label_inside_menu = ast
-    #             return
-    #     self.advance_to_line(ast.linenumber)
-    #     self.indent()
+    @dispatch(renpy.ast.Label)
+    def print_label(self, ast, indent):
+        # If a Call block preceded us, it printed us as "from"
+        if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
+            return
+        remaining_blocks = len(self.block) - self.index
+        if remaining_blocks > 1:
+            next_ast = self.block[self.index + 1]
+            # See if we're the label for a menu, rather than a standalone label.
+            if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
+                hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
+                (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
+                isinstance(next_ast, renpy.ast.Say) and
+                self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
+                self.label_inside_menu = ast
+                return
 
-    #     # It's possible that we're an "init label", not a regular label. There's no way to know
-    #     # if we are until we parse our children, so temporarily redirect all of our output until
-    #     # that's done, so that we can squeeze in an "init " if we are.
-    #     out_file = self.out_file
-    #     self.out_file = StringIO()
-    #     missing_init = self.missing_init
-    #     self.missing_init = False
-    #     try:
-    #         self.write("label %s%s%s:" % (
-    #             ast.name,
-    #             reconstruct_paraminfo(ast.parameters) if hasattr(ast, 'parameters') else '',
-    #             " hide" if hasattr(ast, 'hide') and ast.hide else ""))
-    #         self.print_nodes(ast.block, 1)
-    #     finally:
-    #         if self.missing_init:
-    #             out_file.write("init ")
-    #         self.missing_init = missing_init
-    #         out_file.write(self.out_file.getvalue())
-    #         self.out_file = out_file
+        # It's possible that we're an "init label", not a regular label. There's no way to know
+        # if we are until we parse our children, so temporarily redirect all of our output until
+        # that's done, so that we can squeeze in an "init " if we are.
+        missing_init = self.missing_init
+        self.missing_init = False
+        try:
+            self.lines[ast.linenumber] = (indent, "label %s%s%s:" % (
+                ast.name,
+                reconstruct_paraminfo(ast.parameters) if hasattr(ast, 'parameters') else '',
+                " hide" if hasattr(ast, 'hide') and ast.hide else ""))
+            self.print_nodes(ast.block, indent + 1)
+        finally:
+            if self.missing_init:
+                self.lines[ast.linenumber][1] = "init " + self.lines[ast.linenumber][1]
+            self.missing_init = missing_init
 
     @dispatch(renpy.ast.Jump)
     def print_jump(self, ast, indent):
@@ -436,48 +430,46 @@ class Decompiler(DecompilerBase):
 
         self.print_nodes(ast.block, indent + 1)
 
-    # @dispatch(renpy.ast.Pass)
-    # def print_pass(self, ast):
-    #     if (self.index and
-    #         isinstance(self.block[self.index - 1], renpy.ast.Call)):
-    #         return
+    @dispatch(renpy.ast.Pass)
+    def print_pass(self, ast, indent):
+        if (self.index and
+            isinstance(self.block[self.index - 1], renpy.ast.Call)):
+            return
 
-    #     if (self.index > 1 and
-    #         isinstance(self.block[self.index - 2], renpy.ast.Call) and
-    #         isinstance(self.block[self.index - 1], renpy.ast.Label) and
-    #         self.block[self.index - 2].linenumber == ast.linenumber):
-    #         return
-
-    #     self.advance_to_line(ast.linenumber)
-    #     self.indent()
-    #     self.write("pass")
+        if (self.index > 1 and
+            isinstance(self.block[self.index - 2], renpy.ast.Call) and
+            isinstance(self.block[self.index - 1], renpy.ast.Label) and
+            self.block[self.index - 2].linenumber == ast.linenumber):
+            return
+        
+        self.lines[ast.linenumver] = (indent, "pass")
 
     def require_init(self):
         if not self.in_init:
             self.missing_init = True
 
-    # def set_best_init_offset(self, nodes):
-    #     votes = {}
-    #     for ast in nodes:
-    #         ast = util.convert_ast(ast)
-    #         if not isinstance(ast, renpy.ast.Init):
-    #             continue
-    #         offset = ast.priority
-    #         # Keep this block in sync with print_init
-    #         if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
-    #             if isinstance(ast.block[0], renpy.ast.Screen):
-    #                 offset -= -500
-    #             elif isinstance(ast.block[0], renpy.ast.Testcase):
-    #                 offset -= 500
-    #             elif isinstance(ast.block[0], renpy.ast.Image):
-    #                 offset -= 500 if self.is_356c6e34_or_later else 990
-    #         votes[offset] = votes.get(offset, 0) + 1
-    #     if votes:
-    #         winner = max(votes, key=votes.get)
-    #         # It's only worth setting an init offset if it would save
-    #         # more than one priority specification versus not setting one.
-    #         if votes.get(0, 0) + 1 < votes[winner]:
-    #             self.set_init_offset(winner)
+    def set_best_init_offset(self, nodes):
+        votes = {}
+        for ast in nodes:
+            ast = util.convert_ast(ast)
+            if not isinstance(ast, renpy.ast.Init):
+                continue
+            offset = ast.priority
+            # Keep this block in sync with print_init
+            if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
+                if isinstance(ast.block[0], renpy.ast.Screen):
+                    offset -= -500
+                elif isinstance(ast.block[0], renpy.ast.Testcase):
+                    offset -= 500
+                elif isinstance(ast.block[0], renpy.ast.Image):
+                    offset -= 500 if self.is_356c6e34_or_later else 990
+            votes[offset] = votes.get(offset, 0) + 1
+        if votes:
+            winner = max(votes, key=votes.get)
+            # It's only worth setting an init offset if it would save
+            # more than one priority specification versus not setting one.
+            if votes.get(0, 0) + 1 < votes[winner]:
+                self.set_init_offset(winner)
 
     # def set_init_offset(self, offset):
     #     def do_set_init_offset(linenumber):
@@ -548,18 +540,29 @@ class Decompiler(DecompilerBase):
     #     self.print_say(self.say_inside_menu, inmenu=True)
     #     self.say_inside_menu = None
 
-    # def print_menu_item(self, label, condition, block, arguments):
-    #     self.indent()
-    #     self.write('"%s"' % string_escape(label))
+    def print_menu_item(self, label, condition, block, arguments, indent):
+        if hasattr(condition, "linenumber"):
+            self.lines[condition.linenumber] = (indent, '"%s"' % string_escape(label))
+            linenumber = condition.linenumber
+        elif block is not None:
+            self.lines[block.linenumber - 1] = (indent, '"%s"' % string_escape(label))
+            linenumber = block.linenumber - 1
+        else:
+            print("Unknown linenumber for item menu:")
+            print(label)
+            print(condition)
+            print(block)
+            print(arguments)
+            return
 
-    #     if arguments is not None:
-    #         self.write(reconstruct_arginfo(arguments))
+        if arguments is not None:
+            self.lines[linenumber][1] += reconstruct_arginfo(arguments)
 
-    #     if block is not None:
-    #         if ((PY2 and isinstance(condition, unicode)) or (PY3 and isinstance(condition, str))) and (condition != 'True'):
-    #             self.write(" if %s" % condition)
-    #         self.write(":")
-    #         self.print_nodes(block, 1)
+        if block is not None:
+            if ((PY2 and isinstance(condition, unicode)) or (PY3 and isinstance(condition, str))) and (condition != 'True'):
+                self.lines[linenumber][1] += " if %s" % condition
+            self.lines[linenumber][1] += ":"
+            self.print_nodes(block, indent + 1)
 
     @dispatch(renpy.ast.Menu)
     def print_menu(self, ast, indent):
@@ -592,7 +595,7 @@ class Decompiler(DecompilerBase):
                 if self.translator:
                     label = self.translator.strings.get(label, label)
                 
-                self.print_menu_item(label, condition, block, arguments)
+                self.print_menu_item(label, condition, block, arguments, indent + 1)
 
     @dispatch(renpy.ast.Python)
     def print_python(self, ast, indent, early=False):
@@ -620,28 +623,28 @@ class Decompiler(DecompilerBase):
     def print_earlypython(self, ast, indent):
         self.print_python(ast, indent, early=True)
 
-    # @dispatch(renpy.ast.Define)
-    # @dispatch(renpy.ast.Default)
-    # def print_define(self, ast, indent):
-    #     self.require_init()
-    #     if isinstance(ast, renpy.ast.Default):
-    #         name = "default"
-    #     else:
-    #         name = "define"
+    @dispatch(renpy.ast.Define)
+    @dispatch(renpy.ast.Default)
+    def print_define(self, ast, indent):
+        self.require_init()
+        if isinstance(ast, renpy.ast.Default):
+            name = "default"
+        else:
+            name = "define"
 
-    #     # If we have an implicit init block with a non-default priority, we need to store the priority here.
-    #     priority = ""
-    #     if isinstance(self.parent, renpy.ast.Init):
-    #         init = self.parent
-    #         if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
-    #             priority = " %d" % (init.priority - self.init_offset)
-    #     index = ""
-    #     if hasattr(ast, "index") and ast.index is not None:
-    #         index = "[%s]" % ast.index.source
-    #     if not hasattr(ast, "store") or ast.store == "store":
-    #         self.lines[ast.linenumber] = (indent, "%s%s %s%s = %s" % (name, priority, ast.varname, index, ast.code.source))
-    #     else:
-    #         self.lines[ast.linenumber] = (indent, "%s%s %s.%s%s = %s" % (name, priority, ast.store[6:], ast.varname, index, ast.code.source))
+        # If we have an implicit init block with a non-default priority, we need to store the priority here.
+        priority = ""
+        if isinstance(self.parent, renpy.ast.Init):
+            init = self.parent
+            if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
+                priority = " %d" % (init.priority - self.init_offset)
+        index = ""
+        if hasattr(ast, "index") and ast.index is not None:
+            index = "[%s]" % ast.index.source
+        if not hasattr(ast, "store") or ast.store == "store":
+            self.lines[ast.linenumber] = (indent, "%s%s %s%s = %s" % (name, priority, ast.varname, index, ast.code.source))
+        else:
+            self.lines[ast.linenumber] = (indent, "%s%s %s.%s%s = %s" % (name, priority, ast.store[6:], ast.varname, index, ast.code.source))
 
     @dispatch(renpy.ast.Say)
     def print_say(self, ast, indent):
